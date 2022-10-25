@@ -1,0 +1,56 @@
+---
+- hosts: aws_ec2
+  tasks:
+    - name: add user benny with sudo in ubuntu
+      become: true
+      user:
+        name: benny
+        password: "{{ 'password' | password_hash('sha512') }}"
+        group: sudo
+      when: ansible_distribution in ["Ubuntu", "Debian"]
+    - name: add user benny with sudo in rhel
+      become: true
+      user:
+        name: benny
+        password: "{{ 'password' | password_hash('sha512') }}"
+        group: wheel
+      when: ansible_distribution in ["RedHat","Fedora", "CentOS"]
+    - name: change user shell to bash
+      become: true
+      user:
+        name: benny
+        shell: /bin/bash
+    - name: create home dir
+      file:
+        path: "~/home"
+        state: directory
+      become: true
+      become_method: sudo
+      become_user: benny
+    - name: Copy file with owner and permissions
+      become: true
+      copy:
+        src: /home/ec2-user/.ssh/
+        dest: /home/benny/home/.ssh/
+        owner: benny
+        remote_src: yes
+    - name: replace root login ubuntu
+      become: true
+      replace:
+        path: /etc/ssh/sshd_config
+        regexp: "#PermitRootLogin prohibit-password"
+        replace: "PermitRootLogin no"
+      when: ansible_distribution in ["Ubuntu", "Debian"]
+    - name: replace root login rhel
+      become: true
+      replace:
+        path: /etc/ssh/sshd_config
+        regexp: "PermitRootLogin yes"
+        replace: "PermitRootLogin no"
+      when: ansible_distribution in ["RedHat","Fedora", "CentOS"]
+    - name: restart sshd
+      become: true
+      service:
+        name: sshd
+        state: restarted
+
