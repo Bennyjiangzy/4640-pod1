@@ -6,20 +6,35 @@
       user:
         name: benny
         password: "{{ 'password' | password_hash('sha512') }}"
-        group: sudo
+        groups: sudo
+        append: yes
       when: ansible_distribution in ["Ubuntu", "Debian"]
+
     - name: add user benny with sudo in rhel
       become: true
       user:
         name: benny
         password: "{{ 'password' | password_hash('sha512') }}"
-        group: wheel
+        groups: wheel
+        append: yes
       when: ansible_distribution in ["RedHat","Fedora", "CentOS"]
+
+    - name: Allow 'wheel' group to have passwordless sudo
+      become: true
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^%wheel'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+      when: ansible_distribution in ["RedHat","Fedora", "CentOS"]
+
     - name: change user shell to bash
       become: true
       user:
         name: benny
         shell: /bin/bash
+
     - name: create home dir
       file:
         path: "~/home"
@@ -27,6 +42,7 @@
       become: true
       become_method: sudo
       become_user: benny
+
     - name: Copy file with owner and permissions
       become: true
       copy:
@@ -34,6 +50,7 @@
         dest: /home/benny/home/.ssh/
         owner: benny
         remote_src: yes
+
     - name: replace root login ubuntu
       become: true
       replace:
@@ -41,6 +58,7 @@
         regexp: "#PermitRootLogin prohibit-password"
         replace: "PermitRootLogin no"
       when: ansible_distribution in ["Ubuntu", "Debian"]
+
     - name: replace root login rhel
       become: true
       replace:
@@ -48,6 +66,7 @@
         regexp: "PermitRootLogin yes"
         replace: "PermitRootLogin no"
       when: ansible_distribution in ["RedHat","Fedora", "CentOS"]
+      
     - name: restart sshd
       become: true
       service:

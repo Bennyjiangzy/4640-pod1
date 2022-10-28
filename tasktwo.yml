@@ -1,0 +1,37 @@
+---
+- hosts: aws_ec2
+  tasks:
+    - name: Update apt-get repo and cache in ubuntu
+      become: true
+      apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+      when: ansible_distribution in ["Ubuntu", "Debian"]
+      
+    - name: Upgrade all apt packages in ubuntu
+      become: true
+      apt: upgrade=dist force_apt_get=yes
+      when: ansible_distribution in ["Ubuntu", "Debian"]
+      
+    - name: installing podman in ubuntu
+      become: true
+      apt:
+        name: podman
+      when: ansible_distribution in ["Ubuntu", "Debian"]
+
+    - name: install podman in rhel
+      become: true
+      yum:
+        name: podman
+        state: present
+      when: ansible_distribution in ["RedHat","Fedora", "CentOS"]
+
+    - name: pull image
+      containers.podman.podman_image:
+        name: docker.io/library/httpd
+        pull: true
+        tag: latest
+
+    - name: Run apache container
+      containers.podman.podman_container:
+        name: container
+        image: docker.io/library/httpd
+        state: started
